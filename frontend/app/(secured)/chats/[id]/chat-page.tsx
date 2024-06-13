@@ -16,12 +16,30 @@ let socket = null;
 
 export function ChatPage({ id }: ChatPageProps) {
   const [messages, setMessages] = useState<any[]>([]);
-  const [parterTyping, setPartnerTyping] = useState(false);
+  const [partnerTyping, setPartnerTyping] = useState(false);
+  const [messageText, setMessageText] = useState("");
 
   const fetchMessages = async () => {
     const res = await fetch(`http://localhost:5000/api/chats/${id}`);
     const data = await res.json();
     setMessages(data.messages);
+  };
+
+  const sendMessage = async () => {
+    const res = await fetch(`http://localhost:5000/api/chats/${id}/sendText`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`, // Add authentication token if required
+      },
+      body: JSON.stringify({ text: messageText }),
+    });
+
+    if (res.ok) {
+      const message = await res.json();
+      setMessages((current) => [...current, message]);
+      setMessageText(""); // Clear the input field after sending
+    }
   };
 
   useEffect(() => {
@@ -42,7 +60,7 @@ export function ChatPage({ id }: ChatPageProps) {
       setMessages((current) => [...current, message]);
     });
 
-    socket.on("PARTER_TYPING", () => {
+    socket.on("PARTNER_TYPING", () => {
       setPartnerTyping(true);
     });
 
@@ -52,7 +70,7 @@ export function ChatPage({ id }: ChatPageProps) {
   }, []);
 
   useEffect(() => {
-    // set partnetTyping false after 3 seconds
+    // set partnerTyping false after 3 seconds
     const timeout = setTimeout(() => {
       setPartnerTyping(false);
     }, 3000);
@@ -60,7 +78,7 @@ export function ChatPage({ id }: ChatPageProps) {
     return () => {
       clearTimeout(timeout);
     };
-  }, [parterTyping]);
+  }, [partnerTyping]);
 
   return (
     <div className="flex flex-col h-screen">
@@ -107,8 +125,10 @@ export function ChatPage({ id }: ChatPageProps) {
         <Input
           className="flex-1 bg-transparent border-none focus:ring-0 dark:text-white"
           placeholder="Type your message..."
+          value={messageText}
+          onChange={(e) => setMessageText(e.target.value)}
         />
-        <Button className="ml-4" variant="ghost">
+        <Button className="ml-4" variant="ghost" onClick={sendMessage}>
           <SendIcon className="w-5 h-5" />
         </Button>
       </div>
